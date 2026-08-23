@@ -113,6 +113,13 @@ export function exportPdf({
   const margin = 14
   const contentW = pageW - margin * 2
 
+  const MAX_TITLE_CHARS = 30
+  const rawName = sanitizeFileName(fileName ?? "")
+  const reportTitle =
+    rawName.length > MAX_TITLE_CHARS
+      ? `${rawName.slice(0, MAX_TITLE_CHARS - 3)}...`
+      : rawName
+
   /* Totals */
   const incomeTotal = transactions
     .filter((t) => t.type === "income")
@@ -165,7 +172,7 @@ export function exportPdf({
   doc.setFont("helvetica", "bold")
   doc.setFontSize(17)
   doc.setTextColor(255, 255, 255)
-  doc.text("Transactions Report", textX, 15)
+  doc.text(reportTitle, textX, 15)
 
   doc.setFont("helvetica", "normal")
   doc.setFontSize(8.5)
@@ -175,7 +182,11 @@ export function exportPdf({
     month: "short",
     year: "numeric",
   })
-  doc.text(`Spendly  ·  Generated on ${generatedOn}`, textX, 21)
+  doc.text(
+    `Spendly  ·  ${currencyCode}  ·  Generated on ${generatedOn}`,
+    textX,
+    21
+  )
 
   // Entry counter chip (top-right)
   doc.setFontSize(8.5)
@@ -287,7 +298,7 @@ export function exportPdf({
     doc.setFont("helvetica", "normal")
     doc.setFontSize(8)
     doc.setTextColor(...GRAY)
-    doc.text("Spendly · Transactions Report", margin, pageH - 8)
+    doc.text(`Spendly  ·  ${reportTitle}`, margin, pageH - 8)
     money(doc, `Page ${i} of ${pageCount}`, pageW - margin, pageH - 8)
   }
 
