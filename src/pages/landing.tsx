@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom"
 import { SignedIn, SignedOut, SignUpButton, SignInButton } from "@clerk/clerk-react"
 
 import { Button } from "@/components/ui/button"
+import { AppFooter } from "@/components/app-footer"
 
 const FEATURES = [
   {
@@ -223,14 +224,7 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-border/50 py-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 text-sm text-muted-foreground sm:px-6 lg:px-8">
-          <p>Spendly — premium expense tracking.</p>
-          <p className="font-mono text-xs tracking-widest uppercase">
-            v2 · React · Clerk · Firestore
-          </p>
-        </div>
-      </footer>
+      <AppFooter />
 
       {/* Signed-in users go straight to their ledger */}
       <SignedIn>
