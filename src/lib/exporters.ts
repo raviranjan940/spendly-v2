@@ -257,7 +257,7 @@ export async function exportPdf({
     year: "numeric",
   })
   doc.text(
-    `Spendly  ·  ${getCurrency(currencyCode).symbol} ${currencyCode}  ·  Generated on ${generatedOn}`,
+    `Spendly ·  Generated on ${generatedOn}`,
     textX,
     21
   )
