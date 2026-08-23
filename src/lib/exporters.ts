@@ -2,7 +2,7 @@ import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { parse, unparse } from "papaparse"
 
-import { formatAmount, getCurrency } from "@/lib/currency"
+import { formatAmount } from "@/lib/currency"
 import { sanitizeFileName } from "@/lib/utils"
 import type { Transaction } from "@/types"
 

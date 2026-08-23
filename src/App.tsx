@@ -4,6 +4,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 
 import { ThemeProvider, useTheme } from "@/hooks/use-theme"
+import { InstallPrompt } from "@/components/install-prompt"
 import { Toaster } from "sonner"
 
 const Dashboard = lazy(() =>
@@ -49,6 +50,7 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <ThemedToaster />
+            <InstallPrompt />
             <Suspense
               fallback={
                 <div className="flex min-h-dvh items-center justify-center bg-background">
