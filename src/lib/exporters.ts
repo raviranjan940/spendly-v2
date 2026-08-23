@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable"
 import { parse, unparse } from "papaparse"
 
 import { formatAmount } from "@/lib/currency"
+import { sanitizeFileName } from "@/lib/utils"
 import type { Transaction } from "@/types"
 
 /** Neutralize spreadsheet formula injection. */
@@ -14,9 +15,11 @@ export function sanitizeCsvCell(value: unknown): string {
 export interface ExportOptions {
   transactions: Transaction[]
   currencyCode: string
+  /** Download file name without extension. */
+  fileName?: string
 }
 
-export function exportCsv({ transactions }: ExportOptions): void {
+export function exportCsv({ transactions, fileName }: ExportOptions): void {
   const csvData = transactions.map((t) => [
     sanitizeCsvCell(t.name),
     t.type,
@@ -34,7 +37,7 @@ export function exportCsv({ transactions }: ExportOptions): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
   link.href = url
-  link.download = "your_transactions_report.csv"
+  link.download = `${sanitizeFileName(fileName ?? "")}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -101,6 +104,7 @@ function money(doc: jsPDF, text: string, x: number, y: number): void {
 export function exportPdf({
   transactions,
   currencyCode,
+  fileName,
   logo,
 }: PdfOptions): void {
   const doc = new jsPDF({ unit: "mm", format: "a4" })
@@ -217,7 +221,7 @@ export function exportPdf({
     columnStyles: {
       0: { cellWidth: 10, textColor: GRAY },
       4: { cellWidth: 26 },
-      5: { halign: "right", fontStyle: "bold" },
+      5: { halign: "center", fontStyle: "bold" },
     },
     didParseCell: (data) => {
       if (data.section === "body" && data.column.index === 3) {
@@ -287,7 +291,7 @@ export function exportPdf({
     money(doc, `Page ${i} of ${pageCount}`, pageW - margin, pageH - 8)
   }
 
-  doc.save("your_transactions_report.pdf")
+  doc.save(`${sanitizeFileName(fileName ?? "")}.pdf`)
 }
 
 export interface CsvRow {

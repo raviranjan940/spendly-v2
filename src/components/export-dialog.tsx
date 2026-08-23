@@ -17,7 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { sanitizeFileName } from "@/lib/utils"
 import type { PdfLogo } from "@/lib/exporters"
 import type { Transaction } from "@/types"
 
@@ -53,6 +55,7 @@ export function ExportDialog({
   currencyCode,
 }: ExportDialogsProps) {
   const [scope, setScope] = useState<ExportScope>("all")
+  const [reportName, setReportName] = useState("Transactions Report")
   const [includeLogo, setIncludeLogo] = useState(false)
   const [logoImage, setLogoImage] = useState<PdfLogo | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -109,10 +112,11 @@ export function ExportDialog({
         exportPdf({
           transactions: scoped,
           currencyCode,
+          fileName: reportName,
           logo: includeLogo ? logoImage : null,
         })
       } else {
-        exportCsv({ transactions: scoped, currencyCode })
+        exportCsv({ transactions: scoped, currencyCode, fileName: reportName })
       }
       toast.success(`${format.toUpperCase()} report exported`)
       handleClose(false)
@@ -142,27 +146,51 @@ export function ExportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 py-1">
-          {SCOPES.map(({ value, label }) => (
-            <label
-              key={value}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                scope === value
-                  ? "border-primary/60 bg-primary/10"
-                  : "border-border hover:bg-secondary/60"
-              }`}
-            >
-              <input
-                type="radio"
-                name="export-scope"
-                value={value}
-                checked={scope === value}
-                onChange={() => setScope(value)}
-                className="accent-[var(--primary)]"
-              />
-              <span className="text-sm font-medium">{label}</span>
-            </label>
-          ))}
+        <div className="space-y-4 py-1">
+          {/* Report name */}
+          <div className="space-y-2">
+            <Label htmlFor="export-report-name">Report Name</Label>
+            <Input
+              id="export-report-name"
+              value={reportName}
+              onChange={(e) => setReportName(e.target.value)}
+              placeholder="Transactions Report"
+              maxLength={60}
+            />
+            <p className="text-xs text-muted-foreground">
+              Saved as{" "}
+              <span className="font-mono">
+                {sanitizeFileName(reportName)}.{format}
+              </span>
+            </p>
+          </div>
+
+          {/* Scope */}
+          <div className="space-y-2">
+            <Label>Include</Label>
+            <div className="space-y-2">
+              {SCOPES.map(({ value, label }) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                    scope === value
+                      ? "border-primary/60 bg-primary/10"
+                      : "border-border hover:bg-secondary/60"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="export-scope"
+                    value={value}
+                    checked={scope === value}
+                    onChange={() => setScope(value)}
+                    className="accent-[var(--primary)]"
+                  />
+                  <span className="text-sm font-medium">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
         {isPdf && (
