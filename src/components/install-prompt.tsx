@@ -8,7 +8,9 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
 }
 
-const DISMISS_KEY = "spendly-install-dismissed"
+// Shown exactly once per device/browser — set the moment the popup
+// appears, regardless of whether the user installs, dismisses or ignores it.
+const SHOWN_KEY = "spendly-install-prompted"
 
 function isStandalone(): boolean {
   if (window.matchMedia("(display-mode: standalone)").matches) return true
@@ -31,12 +33,17 @@ export function InstallPrompt() {
 
   useEffect(() => {
     if (isStandalone() || !isMobileDevice()) return
-    if (localStorage.getItem(DISMISS_KEY)) return
+    if (localStorage.getItem(SHOWN_KEY)) return
+
+    const markShown = () => localStorage.setItem(SHOWN_KEY, "1")
 
     const handleInstallPrompt = (event: Event) => {
       event.preventDefault()
       setInstallEvent(event as BeforeInstallPromptEvent)
-      window.setTimeout(() => setVisible(true), 1200)
+      window.setTimeout(() => {
+        markShown()
+        setVisible(true)
+      }, 1200)
     }
 
     const handleInstalled = () => {
@@ -50,7 +57,10 @@ export function InstallPrompt() {
     // iOS Safari never fires beforeinstallprompt — show manual instructions.
     let timer: number | undefined
     if (isIos()) {
-      timer = window.setTimeout(() => setVisible(true), 1200)
+      timer = window.setTimeout(() => {
+        markShown()
+        setVisible(true)
+      }, 1200)
     }
 
     return () => {
@@ -64,7 +74,6 @@ export function InstallPrompt() {
 
   const dismiss = () => {
     setVisible(false)
-    localStorage.setItem(DISMISS_KEY, "1")
   }
 
   const install = async () => {
