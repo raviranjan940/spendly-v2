@@ -2,7 +2,7 @@ import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { parse, unparse } from "papaparse"
 
-import { formatAmount } from "@/lib/currency"
+import { formatAmount, getCurrency } from "@/lib/currency"
 import { sanitizeFileName } from "@/lib/utils"
 import type { Transaction } from "@/types"
 
@@ -16,14 +16,24 @@ export function sanitizeCsvCell(value: unknown): string {
  * jsPDF's built-in Helvetica uses WinAnsi encoding, which cannot
  * render ₹ (U+20B9) — the glyph is silently dropped. Poppins is
  * embedded instead (OFL license, covers ₹ $ € £ ¥).
+ *
+ * jsPDF's custom-font registry is PER DOCUMENT INSTANCE, so the
+ * TTFs must be re-registered on every new jsPDF() — caching the
+ * fetched bytes alone is not enough.
  * -------------------------------------------------------------- */
+interface FontAsset {
+  file: string
+  style: "normal" | "bold"
+  b64: string
+}
+
 const FONT_FAMILY = "Poppins"
 const FONT_FILES: Array<[file: string, style: "normal" | "bold"]> = [
   ["Poppins-Regular.ttf", "normal"],
   ["Poppins-Bold.ttf", "bold"],
 ]
 
-let fontsLoaded: Promise<boolean> | null = null
+let fontDataCache: Promise<FontAsset[] | null> | null = null
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -35,27 +45,42 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary)
 }
 
-/** Registers Poppins with jsPDF once; falls back to Helvetica offline. */
-function loadPdfFonts(): Promise<boolean> {
-  if (!fontsLoaded) {
-    fontsLoaded = (async () => {
+/** Fetches the TTF bytes once per session; null on failure (offline). */
+function fetchFontAssets(): Promise<FontAsset[] | null> {
+  if (!fontDataCache) {
+    fontDataCache = (async () => {
       try {
-        const probe = new jsPDF()
         const base = import.meta.env.BASE_URL || "/"
+        const assets: FontAsset[] = []
         for (const [file, style] of FONT_FILES) {
           const res = await fetch(`${base}fonts/${file}`)
-          if (!res.ok) return false
-          const b64 = arrayBufferToBase64(await res.arrayBuffer())
-          probe.addFileToVFS(file, b64)
-          probe.addFont(file, FONT_FAMILY, style)
+          if (!res.ok) return null
+          assets.push({
+            file,
+            style,
+            b64: arrayBufferToBase64(await res.arrayBuffer()),
+          })
         }
-        return true
+        return assets
       } catch {
-        return false
+        return null
       }
     })()
   }
-  return fontsLoaded
+  return fontDataCache
+}
+
+/** Registers Poppins onto THIS document; verifies success. */
+function registerPdfFonts(doc: jsPDF, assets: FontAsset[]): boolean {
+  try {
+    for (const { file, style, b64 } of assets) {
+      doc.addFileToVFS(file, b64)
+      doc.addFont(file, FONT_FAMILY, style)
+    }
+    return Boolean(doc.getFontList()[FONT_FAMILY]?.length)
+  } catch {
+    return false
+  }
 }
 
 export interface ExportOptions {
@@ -153,9 +178,10 @@ export async function exportPdf({
   fileName,
   logo,
 }: PdfOptions): Promise<void> {
-  const usePoppins = await loadPdfFonts()
-  const fontFamily = usePoppins ? FONT_FAMILY : "helvetica"
   const doc = new jsPDF({ unit: "mm", format: "a4" })
+  const assets = await fetchFontAssets()
+  const fontFamily =
+    assets && registerPdfFonts(doc, assets) ? FONT_FAMILY : "helvetica"
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
   const margin = 14
@@ -231,7 +257,7 @@ export async function exportPdf({
     year: "numeric",
   })
   doc.text(
-    `Spendly  ·  ${currencyCode}  ·  Generated on ${generatedOn}`,
+    `Spendly  ·  ${getCurrency(currencyCode).symbol} ${currencyCode}  ·  Generated on ${generatedOn}`,
     textX,
     21
   )
