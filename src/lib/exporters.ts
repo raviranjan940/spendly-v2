@@ -12,6 +12,52 @@ export function sanitizeCsvCell(value: unknown): string {
   return /^[=+\-@]/.test(str) ? `'${str}` : str
 }
 
+/* ── Embedded Unicode font ─────────────────────────────────────
+ * jsPDF's built-in Helvetica uses WinAnsi encoding, which cannot
+ * render ₹ (U+20B9) — the glyph is silently dropped. Poppins is
+ * embedded instead (OFL license, covers ₹ $ € £ ¥).
+ * -------------------------------------------------------------- */
+const FONT_FAMILY = "Poppins"
+const FONT_FILES: Array<[file: string, style: "normal" | "bold"]> = [
+  ["Poppins-Regular.ttf", "normal"],
+  ["Poppins-Bold.ttf", "bold"],
+]
+
+let fontsLoaded: Promise<boolean> | null = null
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ""
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  return btoa(binary)
+}
+
+/** Registers Poppins with jsPDF once; falls back to Helvetica offline. */
+function loadPdfFonts(): Promise<boolean> {
+  if (!fontsLoaded) {
+    fontsLoaded = (async () => {
+      try {
+        const probe = new jsPDF()
+        const base = import.meta.env.BASE_URL || "/"
+        for (const [file, style] of FONT_FILES) {
+          const res = await fetch(`${base}fonts/${file}`)
+          if (!res.ok) return false
+          const b64 = arrayBufferToBase64(await res.arrayBuffer())
+          probe.addFileToVFS(file, b64)
+          probe.addFont(file, FONT_FAMILY, style)
+        }
+        return true
+      } catch {
+        return false
+      }
+    })()
+  }
+  return fontsLoaded
+}
+
 export interface ExportOptions {
   transactions: Transaction[]
   currencyCode: string
@@ -101,12 +147,14 @@ function money(doc: jsPDF, text: string, x: number, y: number): void {
   doc.text(text, x, y, { align: "right" })
 }
 
-export function exportPdf({
+export async function exportPdf({
   transactions,
   currencyCode,
   fileName,
   logo,
-}: PdfOptions): void {
+}: PdfOptions): Promise<void> {
+  const usePoppins = await loadPdfFonts()
+  const fontFamily = usePoppins ? FONT_FAMILY : "helvetica"
   const doc = new jsPDF({ unit: "mm", format: "a4" })
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
@@ -162,19 +210,19 @@ export function exportPdf({
     // Brand mark placeholder: rounded tile with an "S".
     doc.setFillColor(...INDIGO)
     doc.roundedRect(margin, 9, 11, 11, 2.5, 2.5, "F")
-    doc.setFont("helvetica", "bold")
+    doc.setFont(fontFamily, "bold")
     doc.setFontSize(13)
     doc.setTextColor(255, 255, 255)
     doc.text("S", margin + 5.5, 16.8, { align: "center" })
     textX = margin + 15
   }
 
-  doc.setFont("helvetica", "bold")
+  doc.setFont(fontFamily, "bold")
   doc.setFontSize(17)
   doc.setTextColor(255, 255, 255)
   doc.text(reportTitle, textX, 15)
 
-  doc.setFont("helvetica", "normal")
+  doc.setFont(fontFamily, "normal")
   doc.setFontSize(8.5)
   doc.setTextColor(165, 180, 200)
   const generatedOn = new Date().toLocaleDateString("en-GB", {
@@ -214,7 +262,7 @@ export function exportPdf({
     theme: "plain",
     styles: {
       fontSize: 9,
-      font: "helvetica",
+      font: fontFamily,
       textColor: INK,
       cellPadding: { top: 2.6, right: 3, bottom: 2.6, left: 3 },
       lineWidth: { bottom: 0.2 },
@@ -266,11 +314,11 @@ export function exportPdf({
   ) => {
     doc.setFillColor(...tint)
     doc.roundedRect(x, y, cardW, cardH, 2.5, 2.5, "F")
-    doc.setFont("helvetica", "normal")
+    doc.setFont(fontFamily, "normal")
     doc.setFontSize(7.5)
     doc.setTextColor(...fg)
     doc.text(label.toUpperCase(), x + 4, y + 7)
-    doc.setFont("helvetica", "bold")
+    doc.setFont(fontFamily, "bold")
     doc.setFontSize(12)
     doc.text(value, x + 4, y + 14.5)
   }
@@ -295,7 +343,7 @@ export function exportPdf({
   const pageCount = doc.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
-    doc.setFont("helvetica", "normal")
+    doc.setFont(fontFamily, "normal")
     doc.setFontSize(8)
     doc.setTextColor(...GRAY)
     doc.text(`Spendly  ·  ${reportTitle}`, margin, pageH - 8)

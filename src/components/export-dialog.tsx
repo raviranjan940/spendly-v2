@@ -109,7 +109,7 @@ export function ExportDialog({
     try {
       const { exportCsv, exportPdf } = await loadExporters()
       if (isPdf) {
-        exportPdf({
+        await exportPdf({
           transactions: scoped,
           currencyCode,
           fileName: reportName,
