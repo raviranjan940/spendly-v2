@@ -290,6 +290,7 @@ export async function exportPdf({
       fontSize: 9,
       font: fontFamily,
       textColor: INK,
+      valign: "middle",
       cellPadding: { top: 2.6, right: 3, bottom: 2.6, left: 3 },
       lineWidth: { bottom: 0.2 },
       lineColor: HAIRLINE,
@@ -304,9 +305,10 @@ export async function exportPdf({
     },
     alternateRowStyles: { fillColor: STRIPE },
     columnStyles: {
-      0: { cellWidth: 10, textColor: GRAY },
-      4: { cellWidth: 26 },
-      5: { halign: "center", fontStyle: "bold" },
+      0: { cellWidth: 12, halign: "center" },
+      3: { cellWidth: 24, halign: "center" },
+      4: { cellWidth: 28, halign: "center" },
+      5: { cellWidth: 32, halign: "center", fontStyle: "bold" },
     },
     didParseCell: (data) => {
       if (data.section === "body" && data.column.index === 3) {
