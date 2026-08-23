@@ -97,7 +97,7 @@ export function InstallPrompt() {
 
         <div className="flex items-center gap-3">
           <img
-            src="/icons/icon-192.png?v=4"
+            src="/icons/icon-192.png"
             alt="Spendly logo"
             className="size-12 shrink-0 rounded-xl border border-white/10"
           />
