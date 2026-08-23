@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import type { PdfLogo } from "@/lib/exporters"
 import type { Transaction } from "@/types"
 
 // jsPDF/papaparse are heavy — load them only when an export actually runs.
@@ -53,16 +54,14 @@ export function ExportDialog({
 }: ExportDialogsProps) {
   const [scope, setScope] = useState<ExportScope>("all")
   const [includeLogo, setIncludeLogo] = useState(false)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoImage, setLogoImage] = useState<PdfLogo | null>(null)
   const [exporting, setExporting] = useState(false)
 
   const isPdf = format === "pdf"
 
   const resetLogoState = () => {
     setIncludeLogo(false)
-    setLogoFile(null)
-    setLogoPreview(null)
+    setLogoImage(null)
   }
 
   const handleClose = (next: boolean) => {
@@ -83,9 +82,8 @@ export function ExportDialog({
       toast.error("Image must be smaller than 2MB")
       return
     }
-    setLogoFile(file)
     const { readImageAsDataUrl } = await loadExporters()
-    setLogoPreview(await readImageAsDataUrl(file))
+    setLogoImage(await readImageAsDataUrl(file))
   }
 
   const handleExport = async () => {
@@ -99,18 +97,20 @@ export function ExportDialog({
       return
     }
 
-    if (isPdf && includeLogo && !logoFile) {
+    if (isPdf && includeLogo && !logoImage) {
       toast.error("Please upload a logo first")
       return
     }
 
     setExporting(true)
     try {
-      const { exportCsv, exportPdf, readImageAsDataUrl } = await loadExporters()
+      const { exportCsv, exportPdf } = await loadExporters()
       if (isPdf) {
-        const logoDataUrl =
-          includeLogo && logoFile ? await readImageAsDataUrl(logoFile) : null
-        exportPdf({ transactions: scoped, currencyCode, logoDataUrl })
+        exportPdf({
+          transactions: scoped,
+          currencyCode,
+          logo: includeLogo ? logoImage : null,
+        })
       } else {
         exportCsv({ transactions: scoped, currencyCode })
       }
@@ -196,16 +196,16 @@ export function ExportDialog({
                     onChange={handleLogoUpload}
                   />
                 </label>
-                {!logoFile && (
+                {!logoImage && (
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <TriangleAlert className="size-3.5 text-expense" />
                     A logo is required when this option is enabled.
                   </p>
                 )}
-                {logoPreview && (
+                {logoImage && (
                   <div className="flex justify-center rounded-lg border border-dashed border-border p-3">
                     <img
-                      src={logoPreview}
+                      src={logoImage.dataUrl}
                       alt="Logo preview"
                       className="max-h-16 max-w-full object-contain"
                     />
