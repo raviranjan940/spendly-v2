@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ⚠️  IMPORTANT
+    // This app authenticates with Clerk (not Firebase Auth). Cloud Firestore
+    // security rules CANNOT verify a Clerk session — `request.auth` here refers
+    // to Firebase Auth only, which is not used.
+    //
+    // The rules below are deliberately permissive so the demo keeps working.
+    // DO NOT use them in production. For production, bridge Clerk → Firebase:
+    //   1. Add a backend (e.g. Firebase Cloud Function / your API) that validates
+    //      the Clerk JWT (https://clerk.com/docs/backend-requests/handling/session-tokens)
+    //      and mints a Firebase custom token via the Admin SDK.
+    //   2. Call `signInWithCustomToken()` on the client to get a Firebase Auth user.
+    //   3. Restore strict per-user rules using request.auth.uid == userId.
+    match /users/{userId}/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
